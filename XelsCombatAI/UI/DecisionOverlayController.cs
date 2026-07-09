@@ -1103,6 +1103,7 @@ internal sealed class DecisionOverlayController(
             trueNorthActive() ||
             target == null ||
             !PositionalTargetPolicy.CanApplyPositionals(target, services.DataManager) ||
+            PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(player, target, services.DataManager, out _) ||
             JobRoles.GetRangeRole(player) != RangeRole.Melee)
         {
             return null;

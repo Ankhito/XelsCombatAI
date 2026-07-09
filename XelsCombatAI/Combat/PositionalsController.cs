@@ -325,7 +325,7 @@ internal sealed class PositionalsController(
             return false;
         }
 
-        if (PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(player, battleTarget, out reason))
+        if (PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(player, battleTarget, services.DataManager, out reason))
         {
             return false;
         }
@@ -374,7 +374,7 @@ internal sealed class PositionalsController(
             services.ObjectTable.LocalPlayer == null ||
             services.TargetManager.Target is not IBattleChara target ||
             !PositionalTargetPolicy.CanApplyPositionals(target, services.DataManager) ||
-            PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(services.ObjectTable.LocalPlayer, target, out _))
+            PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(services.ObjectTable.LocalPlayer, target, services.DataManager, out _))
         {
             this.ClearMovementIntent();
             return;
@@ -422,7 +422,7 @@ internal sealed class PositionalsController(
             return false;
         }
 
-        if (PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(services.ObjectTable.LocalPlayer, target as IBattleChara, out reason))
+        if (PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(services.ObjectTable.LocalPlayer, target as IBattleChara, services.DataManager, out reason))
         {
             return false;
         }
@@ -556,7 +556,7 @@ internal sealed class PositionalsController(
             services.TargetManager.Target is not IBattleChara target ||
             target.GameObjectId != intent.TargetId ||
             !PositionalTargetPolicy.CanApplyPositionals(target, services.DataManager) ||
-            PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(player, target, out _) ||
+            PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(player, target, services.DataManager, out _) ||
             this.IsCurrentPositionalCorrect(intent.Positional))
         {
             return false;

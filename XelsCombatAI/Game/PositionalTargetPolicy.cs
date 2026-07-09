@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game;
 using Dalamud.Plugin.Services;
 using Lumina.Excel.Sheets;
 
@@ -9,7 +10,7 @@ namespace XelsCombatAI.Game;
 
 internal static class PositionalTargetPolicy
 {
-    public static bool ShouldSuppressForTargetOfTarget(IBattleChara? player, IBattleChara? target, out string reason)
+    public static bool ShouldSuppressForTargetOfTarget(IBattleChara? player, IBattleChara? target, IDataManager dataManager, out string reason)
     {
         reason = string.Empty;
         if (player == null || target == null)
@@ -17,7 +18,7 @@ internal static class PositionalTargetPolicy
             return false;
         }
 
-        if (IsTrainingDummy(target))
+        if (IsTrainingDummy(target, dataManager))
         {
             return false;
         }
@@ -54,6 +55,8 @@ internal static class PositionalTargetPolicy
         => dataManager.GetExcelSheet<BNpcBase>().TryGetRow(target.BaseId, out var npcBase) &&
            npcBase.IsOmnidirectional;
 
-    private static bool IsTrainingDummy(IBattleChara target)
-        => target.Name.ToString().Contains("dummy", StringComparison.OrdinalIgnoreCase);
+    private static bool IsTrainingDummy(IBattleChara target, IDataManager dataManager)
+        => target is ICharacter character &&
+           dataManager.GetExcelSheet<BNpcName>(ClientLanguage.English).TryGetRow(character.NameId, out var npcName) &&
+           npcName.Singular.ExtractText().Contains("dummy", StringComparison.OrdinalIgnoreCase);
 }
