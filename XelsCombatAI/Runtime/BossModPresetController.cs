@@ -189,15 +189,29 @@ internal sealed class BossModPresetController(
                 this.LastTargetUptimeRangeReason = $"{this.LastTargetUptimeRangeReason}; {lowPriorityMovementSuppressionReason}";
             }
 
-            this.SetTargetUptimeRange(targetUptimeRange);
+            if (suppressAutomatedMovement)
+            {
+                this.ClearTargetUptimeRange();
+            }
+            else
+            {
+                this.SetTargetUptimeRange(targetUptimeRange);
+            }
 
             this.SetForbiddenZoneCushion(config.ManageForbiddenZoneDistance && !suppressSafeLowPriorityMovement
                 ? MapForbiddenZoneCushion(config.PreferredForbiddenZoneDistance)
                 : "None");
 
-            this.SetMovementRangeStrategy(config.ManageMovement && !suppressTargetUptimeRange && !suppressUptimeWalk && !suppressSafeLowPriorityMovement
-                ? MapCombatStyle(config.CombatStyle)
-                : "Any");
+            if (suppressAutomatedMovement)
+            {
+                this.ClearMovementRangeStrategy();
+            }
+            else
+            {
+                this.SetMovementRangeStrategy(config.ManageMovement && !suppressTargetUptimeRange && !suppressUptimeWalk && !suppressSafeLowPriorityMovement
+                    ? MapCombatStyle(config.CombatStyle)
+                    : "Any");
+            }
 
             if (config.ManagePositionals)
             {
@@ -396,6 +410,19 @@ internal sealed class BossModPresetController(
         }
     }
 
+    private void ClearTargetUptimeRange()
+    {
+        if (this.LastTargetUptimeRange < 0f)
+        {
+            return;
+        }
+
+        if (bossMod.ClearRange(BossModIpc.DefaultPresetName))
+        {
+            this.LastTargetUptimeRange = -1f;
+        }
+    }
+
     private void SetMovement(bool enabled)
     {
         if (this.LastMovement == enabled)
@@ -432,6 +459,19 @@ internal sealed class BossModPresetController(
         if (bossMod.SetMovementRangeStrategy(BossModIpc.DefaultPresetName, strategy))
         {
             this.LastMovementRangeStrategy = strategy;
+        }
+    }
+
+    private void ClearMovementRangeStrategy()
+    {
+        if (this.LastMovementRangeStrategy == null)
+        {
+            return;
+        }
+
+        if (bossMod.ClearMovementRangeStrategy(BossModIpc.DefaultPresetName))
+        {
+            this.LastMovementRangeStrategy = null;
         }
     }
 

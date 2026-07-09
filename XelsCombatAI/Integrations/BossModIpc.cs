@@ -180,6 +180,12 @@ internal sealed class BossModIpc
             MathF.Round(range, 1).ToString(System.Globalization.CultureInfo.InvariantCulture)));
     }
 
+    public bool ClearRange(string presetName)
+        => this.ClearTransientStrategy(
+            presetName,
+            "BossMod.Autorotation.MiscAI.StayCloseToTarget",
+            "range");
+
     public bool SetMovement(string presetName, bool enabled)
     {
         if (!this.IsAvailable() || this.addTransientStrategy is not { } subscriber)
@@ -221,6 +227,12 @@ internal sealed class BossModIpc
             "Range",
             strategy));
     }
+
+    public bool ClearMovementRangeStrategy(string presetName)
+        => this.ClearTransientStrategy(
+            presetName,
+            "BossMod.Autorotation.MiscAI.NormalMovement",
+            "Range");
 
     public bool SetLeylinesBetweenTheLines(string presetName, bool enabled)
     {
