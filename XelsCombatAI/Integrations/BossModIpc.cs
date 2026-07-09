@@ -10,6 +10,7 @@ namespace XelsCombatAI.Integrations;
 internal sealed class BossModIpc
 {
     public const string DefaultPresetName = "Xel's Combat AI";
+    public const string ManualMovementPresetName = "Xel's Combat AI (Manual Movement)";
 
     private const string PresetPayload = """
     {
@@ -41,11 +42,38 @@ internal sealed class BossModIpc
     }
     """;
 
+    private const string ManualMovementPresetPayload = """
+    {
+      "Name": "Xel's Combat AI (Manual Movement)",
+      "Modules": {
+        "BossMod.Autorotation.MiscAI.NormalMovement": [
+          {
+            "Track": "Destination",
+            "Option": "None"
+          },
+          {
+            "Track": "Range",
+            "Option": "Any"
+          },
+          {
+            "Track": "ForbiddenZoneCushion",
+            "Option": "None"
+          }
+        ]
+      }
+    }
+    """;
+
     private static readonly string[] RequiredPresetModules =
     [
         "BossMod.Autorotation.MiscAI.StayCloseToTarget",
         "BossMod.Autorotation.MiscAI.StayWithinLeylines",
         "BossMod.Autorotation.MiscAI.GoToPositional",
+        "BossMod.Autorotation.MiscAI.NormalMovement"
+    ];
+
+    private static readonly string[] RequiredManualMovementPresetModules =
+    [
         "BossMod.Autorotation.MiscAI.NormalMovement"
     ];
 
@@ -103,13 +131,26 @@ internal sealed class BossModIpc
             return false;
         }
 
-        var preset = this.Invoke(getPreset, () => getPreset.InvokeFunc(DefaultPresetName));
-        if (preset != null && RequiredPresetModules.All(preset.Contains))
+        return this.EnsurePreset(getPreset, createPreset, DefaultPresetName, PresetPayload, RequiredPresetModules) &&
+               this.EnsurePreset(getPreset, createPreset, ManualMovementPresetName, ManualMovementPresetPayload, RequiredManualMovementPresetModules);
+    }
+
+    private bool EnsurePreset(
+        ICallGateSubscriber<string, string?> getPreset,
+        ICallGateSubscriber<string, bool, bool> createPreset,
+        string presetName,
+        string presetPayload,
+        string[] requiredModules)
+    {
+        var preset = this.Invoke(getPreset, () => getPreset.InvokeFunc(presetName));
+        if (preset != null &&
+            requiredModules.All(preset.Contains) &&
+            (presetName != ManualMovementPresetName || !preset.Contains("BossMod.Autorotation.MiscAI.StayCloseToTarget")))
         {
             return true;
         }
 
-        return this.Invoke(createPreset, () => createPreset.InvokeFunc(PresetPayload, true));
+        return this.Invoke(createPreset, () => createPreset.InvokeFunc(presetPayload, true));
     }
 
     public bool IsIpcReady()
@@ -180,12 +221,6 @@ internal sealed class BossModIpc
             MathF.Round(range, 1).ToString(System.Globalization.CultureInfo.InvariantCulture)));
     }
 
-    public bool ClearRange(string presetName)
-        => this.ClearTransientStrategy(
-            presetName,
-            "BossMod.Autorotation.MiscAI.StayCloseToTarget",
-            "range");
-
     public bool SetMovement(string presetName, bool enabled)
     {
         if (!this.IsAvailable() || this.addTransientStrategy is not { } subscriber)
@@ -227,12 +262,6 @@ internal sealed class BossModIpc
             "Range",
             strategy));
     }
-
-    public bool ClearMovementRangeStrategy(string presetName)
-        => this.ClearTransientStrategy(
-            presetName,
-            "BossMod.Autorotation.MiscAI.NormalMovement",
-            "Range");
 
     public bool SetLeylinesBetweenTheLines(string presetName, bool enabled)
     {

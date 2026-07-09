@@ -41,6 +41,7 @@ internal sealed class BossModPresetController(
     private DateTime suppressUptimeWalkUntil = DateTime.MinValue;
     private ulong suppressedUptimeTargetId;
     private string lastUptimeWalkSuppressionReason = "not suppressed";
+    private string? activeStrategyPresetName;
 
     public bool Initialize()
     {
@@ -56,6 +57,7 @@ internal sealed class BossModPresetController(
                 return false;
             }
 
+            this.activeStrategyPresetName = BossModIpc.DefaultPresetName;
             if (bossMod.SetPositional(BossModIpc.DefaultPresetName, Positional.Any))
             {
                 this.LastPositional = Positional.Any;
@@ -81,9 +83,11 @@ internal sealed class BossModPresetController(
         }
 
         var presetName = BossModIpc.DefaultPresetName;
+        var manualPresetName = BossModIpc.ManualMovementPresetName;
         try
         {
             this.WriteNeutralStrategies(presetName);
+            this.WriteManualMovementNeutralStrategies(manualPresetName);
         }
         catch (Exception ex)
         {
@@ -92,7 +96,8 @@ internal sealed class BossModPresetController(
 
         try
         {
-            if (bossMod.GetActive() == presetName)
+            var activePreset = bossMod.GetActive();
+            if (activePreset == presetName || activePreset == manualPresetName)
             {
                 bossMod.ClearActive();
             }
@@ -105,6 +110,7 @@ internal sealed class BossModPresetController(
         try
         {
             bossMod.ClearTransientPresetStrategies(presetName);
+            bossMod.ClearTransientPresetStrategies(manualPresetName);
         }
         catch (Exception ex)
         {
@@ -116,8 +122,14 @@ internal sealed class BossModPresetController(
     {
         try
         {
-            return bossMod.IsAvailable() &&
-                   bossMod.GetActive() == BossModIpc.DefaultPresetName;
+            if (!bossMod.IsAvailable())
+            {
+                return false;
+            }
+
+            var activePreset = bossMod.GetActive();
+            return activePreset == BossModIpc.DefaultPresetName ||
+                   activePreset == BossModIpc.ManualMovementPresetName;
         }
         catch (Exception ex)
         {
@@ -161,6 +173,13 @@ internal sealed class BossModPresetController(
     {
         try
         {
+            if (!this.SetActiveStrategyPreset(suppressAutomatedMovement
+                    ? BossModIpc.ManualMovementPresetName
+                    : BossModIpc.DefaultPresetName))
+            {
+                return;
+            }
+
             var targetUptimeRange = targetUptimePlanner.CalculateTargetUptimeRange();
             var plannedTargetUptimeRange = targetUptimeRange;
             this.LastTargetUptimeRangeSource = targetUptimePlanner.LastTargetUptimeRangeSource;
@@ -191,27 +210,20 @@ internal sealed class BossModPresetController(
 
             if (suppressAutomatedMovement)
             {
-                this.ClearTargetUptimeRange();
+                this.ApplyManualMovementStrategies();
+                this.SetGapClosers(true);
+                return;
             }
-            else
-            {
-                this.SetTargetUptimeRange(targetUptimeRange);
-            }
+
+            this.SetTargetUptimeRange(targetUptimeRange);
 
             this.SetForbiddenZoneCushion(config.ManageForbiddenZoneDistance && !suppressSafeLowPriorityMovement
                 ? MapForbiddenZoneCushion(config.PreferredForbiddenZoneDistance)
                 : "None");
 
-            if (suppressAutomatedMovement)
-            {
-                this.ClearMovementRangeStrategy();
-            }
-            else
-            {
-                this.SetMovementRangeStrategy(config.ManageMovement && !suppressTargetUptimeRange && !suppressUptimeWalk && !suppressSafeLowPriorityMovement
-                    ? MapCombatStyle(config.CombatStyle)
-                    : "Any");
-            }
+            this.SetMovementRangeStrategy(config.ManageMovement && !suppressTargetUptimeRange && !suppressUptimeWalk && !suppressSafeLowPriorityMovement
+                ? MapCombatStyle(config.CombatStyle)
+                : "Any");
 
             if (config.ManagePositionals)
             {
@@ -364,6 +376,7 @@ internal sealed class BossModPresetController(
         this.suppressUptimeWalkUntil = DateTime.MinValue;
         this.suppressedUptimeTargetId = 0;
         this.lastUptimeWalkSuppressionReason = "reset";
+        this.activeStrategyPresetName = null;
         positionalsController.Reset();
         gapCloserController.Reset();
         escapeGapCloserController.Reset();
@@ -375,6 +388,35 @@ internal sealed class BossModPresetController(
     public void MarkUninitialized()
     {
         this.InitializedPreset = false;
+    }
+
+    private bool SetActiveStrategyPreset(string presetName)
+    {
+        if (this.activeStrategyPresetName == presetName)
+        {
+            return true;
+        }
+
+        if (!bossMod.SetActive(presetName))
+        {
+            return false;
+        }
+
+        this.activeStrategyPresetName = presetName;
+        this.ResetStrategyWriteCache();
+        return true;
+    }
+
+    private void ResetStrategyWriteCache()
+    {
+        this.LastTargetUptimeRange = -1f;
+        this.LastMovement = null;
+        this.LastMovementRangeStrategy = null;
+        this.LastForbiddenZoneCushion = null;
+        this.LastLeylinesBetweenTheLines = null;
+        this.LastLeylinesRetrace = null;
+        this.LastLeylinesGoal = null;
+        this.bossModPositionalNeutral = false;
     }
 
     public void SetPositional(Positional positional)
@@ -410,69 +452,50 @@ internal sealed class BossModPresetController(
         }
     }
 
-    private void ClearTargetUptimeRange()
-    {
-        if (this.LastTargetUptimeRange < 0f)
-        {
-            return;
-        }
-
-        if (bossMod.ClearRange(BossModIpc.DefaultPresetName))
-        {
-            this.LastTargetUptimeRange = -1f;
-        }
-    }
-
-    private void SetMovement(bool enabled)
+    private void SetMovement(bool enabled, string presetName = BossModIpc.DefaultPresetName)
     {
         if (this.LastMovement == enabled)
         {
             return;
         }
 
-        if (bossMod.SetMovement(BossModIpc.DefaultPresetName, enabled))
+        if (bossMod.SetMovement(presetName, enabled))
         {
             this.LastMovement = enabled;
         }
     }
 
-    private void SetForbiddenZoneCushion(string cushion)
+    private void SetForbiddenZoneCushion(string cushion, string presetName = BossModIpc.DefaultPresetName)
     {
         if (this.LastForbiddenZoneCushion == cushion)
         {
             return;
         }
 
-        if (bossMod.SetForbiddenZoneCushion(BossModIpc.DefaultPresetName, cushion))
+        if (bossMod.SetForbiddenZoneCushion(presetName, cushion))
         {
             this.LastForbiddenZoneCushion = cushion;
         }
     }
 
-    private void SetMovementRangeStrategy(string strategy)
+    private void SetMovementRangeStrategy(string strategy, string presetName = BossModIpc.DefaultPresetName)
     {
         if (this.LastMovementRangeStrategy == strategy)
         {
             return;
         }
 
-        if (bossMod.SetMovementRangeStrategy(BossModIpc.DefaultPresetName, strategy))
+        if (bossMod.SetMovementRangeStrategy(presetName, strategy))
         {
             this.LastMovementRangeStrategy = strategy;
         }
     }
 
-    private void ClearMovementRangeStrategy()
+    private void ApplyManualMovementStrategies()
     {
-        if (this.LastMovementRangeStrategy == null)
-        {
-            return;
-        }
-
-        if (bossMod.ClearMovementRangeStrategy(BossModIpc.DefaultPresetName))
-        {
-            this.LastMovementRangeStrategy = null;
-        }
+        this.SetMovement(false, BossModIpc.ManualMovementPresetName);
+        this.SetMovementRangeStrategy("Any", BossModIpc.ManualMovementPresetName);
+        this.SetForbiddenZoneCushion("None", BossModIpc.ManualMovementPresetName);
     }
 
     private bool ShouldSuppressUptimeWalk(float targetUptimeRange, BossModMovementDiagnostics movement, out string reason)
@@ -801,5 +824,12 @@ internal sealed class BossModPresetController(
         bossMod.SetLeylinesBetweenTheLines(presetName, false);
         bossMod.SetLeylinesRetrace(presetName, false);
         bossMod.SetLeylinesGoal(presetName, false);
+    }
+
+    private void WriteManualMovementNeutralStrategies(string presetName)
+    {
+        bossMod.SetMovement(presetName, false);
+        bossMod.SetMovementRangeStrategy(presetName, "Any");
+        bossMod.SetForbiddenZoneCushion(presetName, "None");
     }
 }
