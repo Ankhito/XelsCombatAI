@@ -711,7 +711,7 @@ internal sealed class CombatHistory
     {
         return nextGcd == null
             ? "<none>"
-            : $"{nextGcd.ActionName}/{nextGcd.AdjustedActionId}/remaining={nextGcd.GcdRemaining:0.00}/elapsed={nextGcd.GcdElapsed:0.00}/total={nextGcd.GcdTotal:0.00}/ahead={nextGcd.GcdActionAhead:0.00}";
+            : $"{nextGcd.ActionName}/{nextGcd.AdjustedActionId}/remaining={nextGcd.GcdRemaining:0.00}/elapsed={nextGcd.GcdElapsed:0.00}/total={nextGcd.GcdTotal:0.00}/ahead={nextGcd.GcdActionAhead:0.00}/cast={nextGcd.ActionCastTime:0.00}";
     }
 
     private static string FormatFacing(FacingStatus facing)

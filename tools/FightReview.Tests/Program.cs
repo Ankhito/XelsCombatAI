@@ -1955,6 +1955,56 @@ static void CasterAdvisoryMovementHoldsNearGcdReady()
             gcdActionAhead: 0.35f),
         "physical ranged jobs should not use hardcast advisory movement holds");
 
+    AssertTrue(
+        CasterMovementPolicy.ShouldSuppressAdvisoryMovementForGcd(
+            classJobId: 39,
+            actionId: ActionUse.ReaperHarpeActionId,
+            adjustedActionId: ActionUse.ReaperHarpeActionId,
+            actionCastTime: 1.3f,
+            gcdRemaining: 0.6f,
+            gcdElapsed: 1.9f,
+            gcdTotal: 2.5f,
+            gcdActionAhead: 0.35f),
+        "casted non-caster GCDs should hold advisory movement near the next cast window");
+
+    AssertTrue(
+        CasterMovementPolicy.ShouldSuppressAdvisoryMovementForGcd(
+            classJobId: 39,
+            actionId: ActionUse.ReaperHarpeActionId,
+            adjustedActionId: ActionUse.ReaperHarpeActionId,
+            actionCastTime: 1.3f,
+            gcdRemaining: 1.2f,
+            gcdElapsed: 1.3f,
+            gcdTotal: 2.5f,
+            gcdActionAhead: 0.35f,
+            moveDistance: 5f),
+        "casted non-caster GCDs should hold larger advisory moves that would miss the cast window");
+
+    AssertFalse(
+        CasterMovementPolicy.ShouldSuppressAdvisoryMovementForGcd(
+            classJobId: 39,
+            actionId: ActionUse.ReaperHarpeActionId,
+            adjustedActionId: ActionUse.ReaperHarpeActionId,
+            actionCastTime: 1.3f,
+            gcdRemaining: 1.2f,
+            gcdElapsed: 1.3f,
+            gcdTotal: 2.5f,
+            gcdActionAhead: 0.35f,
+            moveDistance: 1f),
+        "casted non-caster GCDs should still allow tiny advisory moves when they fit before the cast window");
+
+    AssertFalse(
+        CasterMovementPolicy.ShouldSuppressAdvisoryMovementForGcd(
+            classJobId: 39,
+            actionId: 24380,
+            adjustedActionId: 24380,
+            actionCastTime: 0f,
+            gcdRemaining: 0.2f,
+            gcdElapsed: 2.3f,
+            gcdTotal: 2.5f,
+            gcdActionAhead: 0.35f),
+        "non-cast melee GCDs should keep normal advisory movement");
+
     AssertFalse(
         CasterMovementPolicy.ShouldSuppressAdvisoryMovementForGcd(
             classJobId: 24,

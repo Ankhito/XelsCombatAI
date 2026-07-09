@@ -901,6 +901,9 @@ internal sealed class BossModGoalZoneHook : IDisposable
                 {
                     suppress = CasterMovementPolicy.ShouldSuppressAdvisoryMovementForGcd(
                         player.ClassJob.RowId,
+                        timing.ActionId,
+                        timing.AdjustedActionId,
+                        timing.ActionCastTime,
                         timing.GcdRemaining,
                         timing.GcdElapsed,
                         timing.GcdTotal,

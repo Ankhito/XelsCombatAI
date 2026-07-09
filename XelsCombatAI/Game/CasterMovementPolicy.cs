@@ -27,7 +27,50 @@ internal static class CasterMovementPolicy
 
     public static bool ShouldSuppressAdvisoryMovementForGcd(uint classJobId, float gcdRemaining, float gcdElapsed, float gcdTotal, float gcdActionAhead)
     {
-        if (!IsCasterLike(classJobId))
+        return ShouldSuppressAdvisoryMovementForGcd(
+            classJobId,
+            actionId: 0,
+            adjustedActionId: 0,
+            actionCastTime: -1f,
+            gcdRemaining,
+            gcdElapsed,
+            gcdTotal,
+            gcdActionAhead);
+    }
+
+    public static bool ShouldSuppressAdvisoryMovementForGcd(
+        uint classJobId,
+        uint actionId,
+        uint adjustedActionId,
+        float gcdRemaining,
+        float gcdElapsed,
+        float gcdTotal,
+        float gcdActionAhead)
+    {
+        return ShouldSuppressAdvisoryMovementForGcd(
+            classJobId,
+            actionId,
+            adjustedActionId,
+            actionCastTime: -1f,
+            gcdRemaining,
+            gcdElapsed,
+            gcdTotal,
+            gcdActionAhead);
+    }
+
+    public static bool ShouldSuppressAdvisoryMovementForGcd(
+        uint classJobId,
+        uint actionId,
+        uint adjustedActionId,
+        float actionCastTime,
+        float gcdRemaining,
+        float gcdElapsed,
+        float gcdTotal,
+        float gcdActionAhead)
+    {
+        _ = actionId;
+        _ = adjustedActionId;
+        if (!IsCastSensitiveJobOrAction(classJobId, actionCastTime))
         {
             return false;
         }
@@ -56,7 +99,54 @@ internal static class CasterMovementPolicy
         float gcdActionAhead,
         float? moveDistance)
     {
-        if (!IsCasterLike(classJobId) ||
+        return ShouldSuppressAdvisoryMovementForGcd(
+            classJobId,
+            actionId: 0,
+            adjustedActionId: 0,
+            actionCastTime: -1f,
+            gcdRemaining,
+            gcdElapsed,
+            gcdTotal,
+            gcdActionAhead,
+            moveDistance);
+    }
+
+    public static bool ShouldSuppressAdvisoryMovementForGcd(
+        uint classJobId,
+        uint actionId,
+        uint adjustedActionId,
+        float gcdRemaining,
+        float gcdElapsed,
+        float gcdTotal,
+        float gcdActionAhead,
+        float? moveDistance)
+    {
+        return ShouldSuppressAdvisoryMovementForGcd(
+            classJobId,
+            actionId,
+            adjustedActionId,
+            actionCastTime: -1f,
+            gcdRemaining,
+            gcdElapsed,
+            gcdTotal,
+            gcdActionAhead,
+            moveDistance);
+    }
+
+    public static bool ShouldSuppressAdvisoryMovementForGcd(
+        uint classJobId,
+        uint actionId,
+        uint adjustedActionId,
+        float actionCastTime,
+        float gcdRemaining,
+        float gcdElapsed,
+        float gcdTotal,
+        float gcdActionAhead,
+        float? moveDistance)
+    {
+        _ = actionId;
+        _ = adjustedActionId;
+        if (!IsCastSensitiveJobOrAction(classJobId, actionCastTime) ||
             !HasReliableGcdTiming(gcdRemaining, gcdElapsed, gcdTotal))
         {
             return false;
@@ -64,7 +154,7 @@ internal static class CasterMovementPolicy
 
         if (!moveDistance.HasValue || !float.IsFinite(moveDistance.Value) || moveDistance.Value < 0f)
         {
-            return ShouldSuppressAdvisoryMovementForGcd(classJobId, gcdRemaining, gcdElapsed, gcdTotal, gcdActionAhead);
+            return ShouldSuppressAdvisoryMovementForGcd(classJobId, actionId, adjustedActionId, actionCastTime, gcdRemaining, gcdElapsed, gcdTotal, gcdActionAhead);
         }
 
         var requiredSeconds = EstimateMovementSeconds(moveDistance.Value);
@@ -157,6 +247,14 @@ internal static class CasterMovementPolicy
 
     private static bool IsCasterLike(uint classJobId)
         => JobRoles.GetRangeRole(classJobId) is RangeRole.MagicRanged or RangeRole.Healer;
+
+    private static bool IsCastSensitiveJobOrAction(uint classJobId, float actionCastTime)
+        => IsCasterLike(classJobId) ||
+           HasActionCastTime(actionCastTime);
+
+    private static bool HasActionCastTime(float actionCastTime)
+        => float.IsFinite(actionCastTime) &&
+           actionCastTime >= MinimumCastTimeForSlidecastSeconds;
 
     private static bool HasReliableGcdTiming(float gcdRemaining, float gcdElapsed, float gcdTotal)
     {

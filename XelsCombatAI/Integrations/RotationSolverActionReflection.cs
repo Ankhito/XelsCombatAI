@@ -47,7 +47,8 @@ internal sealed record RsrGcdActionTimingSnapshot(
     float GcdRemaining,
     float GcdElapsed,
     float GcdTotal,
-    float GcdActionAhead);
+    float GcdActionAhead,
+    float ActionCastTime = -1f);
 
 internal enum RsrRedMageMeleeTrack
 {
@@ -197,6 +198,7 @@ internal sealed class RotationSolverActionReflection(IDalamudPluginInterface plu
             var name = actionRow != null
                 ? GetPropertyValue(actionRow, actionRow.GetType(), "Name")?.ToString() ?? adjustedId.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 : adjustedId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var actionCastTime = actionRow != null ? this.ReadActionCastTime(actionRow) : -1f;
             var gcdRemaining = ReadStaticFloat(this.defaultGcdRemainProperty, -1f);
             var gcdElapsed = ReadStaticFloat(this.defaultGcdElapsedProperty, -1f);
             var gcdTotal = ReadStaticFloat(this.defaultGcdTotalProperty, -1f);
@@ -211,7 +213,8 @@ internal sealed class RotationSolverActionReflection(IDalamudPluginInterface plu
                 gcdRemaining,
                 gcdElapsed,
                 gcdTotal,
-                gcdActionAhead);
+                gcdActionAhead,
+                actionCastTime);
             reason = "RSR reflected next GCD timing available";
             return true;
         }
@@ -841,6 +844,18 @@ internal sealed class RotationSolverActionReflection(IDalamudPluginInterface plu
     private object? GetPropertyValue(object value, Type type, string name)
     {
         return this.GetCachedProperty(type, name)?.GetValue(value);
+    }
+
+    private float ReadActionCastTime(object actionRow)
+    {
+        var actionType = actionRow.GetType();
+        var cast100ms = GetPropertyValue(actionRow, actionType, "Cast100ms");
+        if (cast100ms != null)
+        {
+            return ReadFloat(cast100ms, -1f) / 10f;
+        }
+
+        return ReadFloat(GetPropertyValue(actionRow, actionType, "CastTime"), -1f);
     }
 
     private object? GetMemberValue(object? instance, Type type, string name)
