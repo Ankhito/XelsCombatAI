@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -8,6 +9,28 @@ namespace XelsCombatAI.Game;
 
 internal static class PositionalTargetPolicy
 {
+    public static bool ShouldSuppressForTargetOfTarget(IBattleChara? player, IBattleChara? target, out string reason)
+    {
+        reason = string.Empty;
+        if (player == null || target == null)
+        {
+            return false;
+        }
+
+        if (IsTrainingDummy(target))
+        {
+            return false;
+        }
+
+        if (target.TargetObjectId != player.GameObjectId)
+        {
+            return false;
+        }
+
+        reason = "target is targeting player";
+        return true;
+    }
+
     public static bool CanApplyPositionals(IBattleChara? target, IDataManager dataManager)
     {
         if (target is not IBattleNpc npc ||
@@ -30,4 +53,7 @@ internal static class PositionalTargetPolicy
     private static bool IsOmnidirectional(IBattleNpc target, IDataManager dataManager)
         => dataManager.GetExcelSheet<BNpcBase>().TryGetRow(target.BaseId, out var npcBase) &&
            npcBase.IsOmnidirectional;
+
+    private static bool IsTrainingDummy(IBattleChara target)
+        => target.Name.ToString().Contains("dummy", StringComparison.OrdinalIgnoreCase);
 }

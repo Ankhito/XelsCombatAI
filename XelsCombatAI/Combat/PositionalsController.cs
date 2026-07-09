@@ -325,6 +325,11 @@ internal sealed class PositionalsController(
             return false;
         }
 
+        if (PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(player, battleTarget, out reason))
+        {
+            return false;
+        }
+
         if (!rotationSolverActions.TryGetUpcomingGcdTiming(out var action, out reason))
         {
             source = "none";
@@ -368,7 +373,8 @@ internal sealed class PositionalsController(
             automatedMovementSuppressed() ||
             services.ObjectTable.LocalPlayer == null ||
             services.TargetManager.Target is not IBattleChara target ||
-            !PositionalTargetPolicy.CanApplyPositionals(target, services.DataManager))
+            !PositionalTargetPolicy.CanApplyPositionals(target, services.DataManager) ||
+            PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(services.ObjectTable.LocalPlayer, target, out _))
         {
             this.ClearMovementIntent();
             return;
@@ -413,6 +419,11 @@ internal sealed class PositionalsController(
         if (!PositionalTargetPolicy.CanApplyPositionals(target as IBattleChara, services.DataManager))
         {
             reason = "target ignores positionals";
+            return false;
+        }
+
+        if (PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(services.ObjectTable.LocalPlayer, target as IBattleChara, out reason))
+        {
             return false;
         }
 
@@ -545,6 +556,7 @@ internal sealed class PositionalsController(
             services.TargetManager.Target is not IBattleChara target ||
             target.GameObjectId != intent.TargetId ||
             !PositionalTargetPolicy.CanApplyPositionals(target, services.DataManager) ||
+            PositionalTargetPolicy.ShouldSuppressForTargetOfTarget(player, target, out _) ||
             this.IsCurrentPositionalCorrect(intent.Positional))
         {
             return false;
