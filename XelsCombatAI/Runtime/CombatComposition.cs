@@ -42,7 +42,7 @@ internal sealed class CombatComposition : IDisposable
         var autoFaceTargetOptionController = new AutoFaceTargetOptionController(config, services);
         var manualCorrectionFeedback = new ManualCorrectionFeedback();
         var rotationSolver = new RotationSolverIpc(pluginInterface, log);
-        var rotationSolverActions = new RotationSolverActionReflection(pluginInterface, log);
+        var rotationSolverActions = new RotationSolverActionReflection(pluginInterface, log, services);
         var dependencyChecker = new DependencyChecker(config, services, bossMod, rotationSolver);
         var jobRangeProvider = new JobRangeProvider(services);
         jobRangeProvider.Initialize();

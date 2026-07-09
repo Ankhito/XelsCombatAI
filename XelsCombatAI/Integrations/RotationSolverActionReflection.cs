@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using Dalamud.Plugin;
@@ -67,7 +68,7 @@ internal sealed record RsrRedMageMeleeIntent(
     string Reason,
     bool SuppressLocalFallback);
 
-internal sealed class RotationSolverActionReflection(IDalamudPluginInterface pluginInterface, IPluginLog log) : IDisposable
+internal sealed class RotationSolverActionReflection(IDalamudPluginInterface pluginInterface, IPluginLog log, DalamudServices services) : IDisposable
 {
     private const string ActionUpdaterTypeName = "RotationSolver.Updaters.ActionUpdater";
     private const string DataCenterTypeName = "RotationSolver.Basic.DataCenter";
@@ -198,7 +199,7 @@ internal sealed class RotationSolverActionReflection(IDalamudPluginInterface plu
             var name = actionRow != null
                 ? GetPropertyValue(actionRow, actionRow.GetType(), "Name")?.ToString() ?? adjustedId.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 : adjustedId.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            var actionCastTime = actionRow != null ? this.ReadActionCastTime(actionRow) : -1f;
+            var actionCastTime = actionRow != null ? this.ReadEffectiveActionCastTime(actionRow, actionId, adjustedId) : -1f;
             var gcdRemaining = ReadStaticFloat(this.defaultGcdRemainProperty, -1f);
             var gcdElapsed = ReadStaticFloat(this.defaultGcdElapsedProperty, -1f);
             var gcdTotal = ReadStaticFloat(this.defaultGcdTotalProperty, -1f);
@@ -856,6 +857,19 @@ internal sealed class RotationSolverActionReflection(IDalamudPluginInterface plu
         }
 
         return ReadFloat(GetPropertyValue(actionRow, actionType, "CastTime"), -1f);
+    }
+
+    private float ReadEffectiveActionCastTime(object actionRow, uint actionId, uint adjustedId)
+    {
+        if ((actionId == ActionUse.ReaperHarpeActionId || adjustedId == ActionUse.ReaperHarpeActionId) &&
+            services.ObjectTable.LocalPlayer?.StatusList.Any(status =>
+                status.StatusId == ActionUse.ReaperEnhancedHarpeStatusId &&
+                status.RemainingTime > 0f) == true)
+        {
+            return 0f;
+        }
+
+        return this.ReadActionCastTime(actionRow);
     }
 
     private object? GetMemberValue(object? instance, Type type, string name)
